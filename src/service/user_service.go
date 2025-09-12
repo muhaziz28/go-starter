@@ -20,7 +20,6 @@ type UserService interface {
 	UpdatePassOrVerify(c *fiber.Ctx, req *validation.UpdatePassOrVerify, id string) error
 	UpdateUser(c *fiber.Ctx, req *validation.UpdateUser, id string) (*model.User, error)
 	DeleteUser(c *fiber.Ctx, id string) error
-	CreateGoogleUser(c *fiber.Ctx, req *validation.GoogleLogin) (*model.User, error)
 }
 
 type userService struct {
@@ -224,38 +223,4 @@ func (s *userService) DeleteUser(c *fiber.Ctx, id string) error {
 	}
 
 	return result.Error
-}
-
-func (s *userService) CreateGoogleUser(c *fiber.Ctx, req *validation.GoogleLogin) (*model.User, error) {
-	if err := s.Validate.Struct(req); err != nil {
-		return nil, err
-	}
-
-	userFromDB, err := s.GetUserByEmail(c, req.Email)
-	if err != nil {
-		if err.Error() == "User not found" {
-			user := &model.User{
-				Name:          req.Name,
-				Email:         req.Email,
-				VerifiedEmail: req.VerifiedEmail,
-			}
-
-			if createErr := s.DB.WithContext(c.Context()).Create(user).Error; createErr != nil {
-				s.Log.Errorf("Failed to create user: %+v", createErr)
-				return nil, createErr
-			}
-
-			return user, nil
-		}
-
-		return nil, err
-	}
-
-	userFromDB.VerifiedEmail = req.VerifiedEmail
-	if updateErr := s.DB.WithContext(c.Context()).Save(userFromDB).Error; updateErr != nil {
-		s.Log.Errorf("Failed to update user: %+v", updateErr)
-		return nil, updateErr
-	}
-
-	return userFromDB, nil
 }

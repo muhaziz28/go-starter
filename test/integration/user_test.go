@@ -23,7 +23,6 @@ func TestUserRoutes(t *testing.T) {
 			Name:     "Test",
 			Email:    "test@gmail.com",
 			Password: "password1",
-			Role:     "user",
 		}
 
 		t.Run("should return 201 and successfully create new user if data is ok", func(t *testing.T) {
@@ -58,7 +57,6 @@ func TestUserRoutes(t *testing.T) {
 			assert.NotNil(t, responseBody.User.ID)
 			assert.Equal(t, newUser.Name, responseBody.User.Name)
 			assert.Equal(t, newUser.Email, responseBody.User.Email)
-			assert.Equal(t, "user", responseBody.User.Role)
 			assert.Equal(t, false, responseBody.User.VerifiedEmail)
 
 			user, err := helper.GetUserByID(test.DB, responseBody.User.ID.String())
@@ -68,13 +66,11 @@ func TestUserRoutes(t *testing.T) {
 			assert.NotEqual(t, user.Password, newUser.Password)
 			assert.Equal(t, user.Name, newUser.Name)
 			assert.Equal(t, user.Email, newUser.Email)
-			assert.Equal(t, user.Role, newUser.Role)
 			assert.Equal(t, false, user.VerifiedEmail)
 		})
 
 		t.Run("should be able to create an admin as well", func(t *testing.T) {
 			helper.ClearAll(test.DB)
-			newUser.Role = "admin"
 			helper.InsertUser(test.DB, fixture.Admin)
 
 			adminAccessToken, err := fixture.AccessToken(fixture.Admin)
@@ -100,12 +96,8 @@ func TestUserRoutes(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.Equal(t, http.StatusCreated, apiResponse.StatusCode)
-			assert.Equal(t, responseBody.User.Role, "admin")
 
-			user, err := helper.GetUserByID(test.DB, responseBody.User.ID.String())
 			assert.Nil(t, err)
-
-			assert.Equal(t, user.Role, "admin")
 		})
 
 		t.Run("should return 401 error if access token is missing", func(t *testing.T) {
@@ -249,7 +241,6 @@ func TestUserRoutes(t *testing.T) {
 		t.Run("should return 400 error if role is neither user nor admin", func(t *testing.T) {
 			helper.ClearAll(test.DB)
 			helper.InsertUser(test.DB, fixture.Admin)
-			newUser.Role = "invalid"
 
 			adminAccessToken, err := fixture.AccessToken(fixture.Admin)
 			assert.Nil(t, err)
@@ -271,7 +262,6 @@ func TestUserRoutes(t *testing.T) {
 		t.Run("should return 400 error if role is neither user or admin", func(t *testing.T) {
 			helper.ClearAll(test.DB)
 			helper.InsertUser(test.DB, fixture.Admin)
-			newUser.Role = "invalid"
 
 			adminAccessToken, err := fixture.AccessToken(fixture.Admin)
 			assert.Nil(t, err)
@@ -323,7 +313,6 @@ func TestUserRoutes(t *testing.T) {
 			assert.Equal(t, fixture.UserOne.ID, responseBody.Results[0].ID)
 			assert.Equal(t, fixture.UserOne.Name, responseBody.Results[0].Name)
 			assert.Equal(t, fixture.UserOne.Email, responseBody.Results[0].Email)
-			assert.Equal(t, fixture.UserOne.Role, responseBody.Results[0].Role)
 			assert.Equal(t, fixture.UserOne.VerifiedEmail, responseBody.Results[0].VerifiedEmail)
 		})
 
@@ -445,7 +434,6 @@ func TestUserRoutes(t *testing.T) {
 			assert.Equal(t, responseBody.User.ID, fixture.UserOne.ID)
 			assert.Equal(t, responseBody.User.Email, fixture.UserOne.Email)
 			assert.Equal(t, responseBody.User.Name, fixture.UserOne.Name)
-			assert.Equal(t, responseBody.User.Role, fixture.UserOne.Role)
 			assert.Equal(t, responseBody.User.VerifiedEmail, fixture.UserOne.VerifiedEmail)
 		})
 
@@ -659,7 +647,6 @@ func TestUserRoutes(t *testing.T) {
 			assert.Equal(t, fixture.UserOne.ID, responseBody.User.ID)
 			assert.Equal(t, updateBody.Name, responseBody.User.Name)
 			assert.Equal(t, updateBody.Email, responseBody.User.Email)
-			assert.Equal(t, "user", responseBody.User.Role)
 			assert.Equal(t, false, responseBody.User.VerifiedEmail)
 
 			user, err := helper.GetUserByID(test.DB, responseBody.User.ID.String())
@@ -669,7 +656,6 @@ func TestUserRoutes(t *testing.T) {
 			assert.NotEqual(t, user.Password, updateBody.Password)
 			assert.Equal(t, user.Name, updateBody.Name)
 			assert.Equal(t, user.Email, updateBody.Email)
-			assert.Equal(t, user.Role, "user")
 		})
 
 		t.Run("should return 401 error if access token is missing", func(t *testing.T) {

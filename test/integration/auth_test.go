@@ -55,7 +55,6 @@ func TestAuthRoutes(t *testing.T) {
 			assert.NotNil(t, responseBody.User.ID)
 			assert.Equal(t, requestBody.Name, responseBody.User.Name)
 			assert.Equal(t, requestBody.Email, responseBody.User.Email)
-			assert.Equal(t, "user", responseBody.User.Role)
 			assert.Equal(t, false, responseBody.User.VerifiedEmail)
 			assert.NotNil(t, responseBody.Tokens.Access.Token)
 			assert.NotNil(t, responseBody.Tokens.Refresh.Token)
@@ -67,7 +66,6 @@ func TestAuthRoutes(t *testing.T) {
 			assert.NotEqual(t, user.Password, requestBody.Password)
 			assert.Equal(t, user.Name, requestBody.Name)
 			assert.Equal(t, user.Email, requestBody.Email)
-			assert.Equal(t, user.Role, "user")
 			assert.Equal(t, user.VerifiedEmail, false)
 		})
 
@@ -185,7 +183,6 @@ func TestAuthRoutes(t *testing.T) {
 			assert.NotNil(t, responseBody.User.ID)
 			assert.Equal(t, "Test User", responseBody.User.Name)
 			assert.Equal(t, "test@gmail.com", responseBody.User.Email)
-			assert.Equal(t, "user", responseBody.User.Role)
 			assert.Equal(t, false, responseBody.User.VerifiedEmail)
 			assert.NotNil(t, responseBody.Tokens.Access.Token)
 			assert.NotNil(t, responseBody.Tokens.Refresh.Token)

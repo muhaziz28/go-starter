@@ -121,7 +121,6 @@ func TestUserModel(t *testing.T) {
 				Name:     "John Doe",
 				Email:    "johndoe@gmail.com",
 				Password: "password1",
-				Role:     "user",
 			}
 
 			bytes, _ := json.Marshal(user)
