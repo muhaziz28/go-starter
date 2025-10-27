@@ -6,20 +6,175 @@ on:
   pull_request:
     branches: ["main"]
 
+env:
+  # App Config
+  APP_ENV: test
+  APP_HOST: 0.0.0.0
+  APP_PORT: 3000
+  APP_URL: http://localhost:3000
+  # Database Config (not needed for unit tests, but good to have)
+  DB_HOST: localhost
+  DB_USER: postgres
+  DB_PASSWORD: testpassword
+  DB_NAME: go-starter-test
+  DB_PORT: 5432
+  # JWT Config
+  JWT_SECRET: test-secret-key-for-unit-tests
+  JWT_ACCESS_EXP_MINUTES: 30
+  JWT_REFRESH_EXP_DAYS: 30
+  JWT_RESET_PASSWORD_EXP_MINUTES: 10
+  JWT_VERIFY_EMAIL_EXP_MINUTES: 10
+  # SMTP Config (dummy)
+  SMTP_HOST: localhost
+  SMTP_PORT: 587
+  SMTP_USERNAME: test
+  SMTP_PASSWORD: test
+  EMAIL_FROM: test@example.com
+
 jobs:
-  Tests:
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Fetch Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Go
-        uses: actions/setup-go@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: 'go.mod'
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Install dependencies
-        run: go mod tidy
+      - name: Verify dependencies
+        run: |
+          go mod download
+          go mod verify
 
-      - name: Run Unit Test
-        run: go test ./test/unit/... -v -race
+      - name: Run unit tests
+        run: |
+          go test ./test/unit/... -v -race -coverprofile=coverage-unit.out -covermode=atomic
+        env:
+          APP_ENV: ${{ env.APP_ENV }}
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+
+      - name: Generate coverage report
+        run: |
+          go tool cover -func=coverage-unit.out
+          go tool cover -html=coverage-unit.out -o coverage-unit.html
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage-unit.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 50" | bc -l) )); then
+            echo "❌ Coverage is below 50%"
+            exit 1
+          else
+            echo "✅ Coverage is above 50%"
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage-unit.out
+          flags: unittests
+          name: unit-tests
+          fail_ci_if_error: false
+        continue-on-error: true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-unit
+          path: coverage-unit.html
+          retention-days: 30
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: go-starter-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Verify dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready!"
+              break
+            fi
+            echo "⏳ Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Test database connection
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U postgres -d go-starter-test -c "SELECT version();"
+
+      - name: Run integration tests
+        run: |
+          go test ./test/integration/... -v -race -coverprofile=coverage-integration.out -covermode=atomic
+        env:
+          APP_ENV: ${{ env.APP_ENV }}
+          APP_HOST: ${{ env.APP_HOST }}
+          APP_PORT: ${{ env.APP_PORT }}
+          APP_URL: ${{ env.APP_URL }}
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_PORT: ${{ env.DB_PORT }}
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+          JWT_ACCESS_EXP_MINUTES: ${{ env.JWT_ACCESS_EXP_MINUTES }}
+          JWT_REFRESH_EXP_DAYS: ${{ env.JWT_REFRESH_EXP_DAYS }}
+          JWT_RESET_PASSWORD_EXP_MINUTES: ${{ env.JWT_RESET_PASSWORD_EXP_MINUTES }}
+          JWT_VERIFY_EMAIL_EXP_MINUTES: ${{ env.JWT_VERIFY_EMAIL_EXP_MINUTES }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage-integration.out
+          flags: integration
+          name: integration-tests
+          fail_ci_if_error: false
+        continue-on-error: true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-integration
+          path: coverage-integration.out
+          retention-days: 30
