@@ -7,13 +7,26 @@ on:
     branches: ["main"]
 
 jobs:
-  Golint:
+  golangci-lint:
+    name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Golint
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'  # Auto-detect Go version dari go.mod
+          cache: false  # Let golangci-lint handle caching
+
+      - name: Run golangci-lint
         uses: reviewdog/action-golangci-lint@v2
         with:
-          golangci_lint_flags: "--config=.golangci.yml --tests=false"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          golangci_lint_version: "v1.60.1"
+          golangci_lint_flags: "--config=.golangci.yml --timeout=5m"
+          reporter: "github-pr-review"
+          level: "error"
+          fail_on_error: true
+          workdir: "."
