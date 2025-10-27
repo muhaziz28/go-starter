@@ -50,9 +50,9 @@ func (h *HealthCheckController) Check(c *fiber.Ctx) error {
 	if err := h.HealthCheckService.GormCheck(); err != nil {
 		isHealthy = false
 		errMsg := err.Error()
-		h.addServiceStatus(&serviceList, "MySQL", false, &errMsg)
+		h.addServiceStatus(&serviceList, "PostgreSQL", false, &errMsg)
 	} else {
-		h.addServiceStatus(&serviceList, "MySQL", true, nil)
+		h.addServiceStatus(&serviceList, "PostgreSQL", true, nil)
 	}
 
 	if err := h.HealthCheckService.MemoryHeapCheck(); err != nil {
