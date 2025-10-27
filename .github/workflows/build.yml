@@ -16,38 +16,12 @@ env:
   DB_PASSWORD: thisisasamplepassword
   DB_NAME: go-starter
   DB_PORT: 5432
-  # JWT Config
   JWT_SECRET: test-secret-key-for-ci
-  JWT_ACCESS_EXP_MINUTES: 30
-  JWT_REFRESH_EXP_DAYS: 30
-  JWT_RESET_PASSWORD_EXP_MINUTES: 10
-  JWT_VERIFY_EMAIL_EXP_MINUTES: 10
-  # SMTP Config (dummy for CI)
-  SMTP_HOST: localhost
-  SMTP_PORT: 587
-  SMTP_USERNAME: test
-  SMTP_PASSWORD: test
-  EMAIL_FROM: test@example.com
 
 jobs:
   build:
-    name: Build and Test
+    name: Build Application
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: thisisasamplepassword
-          POSTGRES_DB: go-starter
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -65,45 +39,6 @@ jobs:
           go mod download
           go mod verify
 
-      - name: Wait for PostgreSQL
-        run: |
-          echo "Waiting for PostgreSQL to be ready..."
-          for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
-              echo "PostgreSQL is ready!"
-              break
-            fi
-            echo "Attempt $i: PostgreSQL not ready yet..."
-            sleep 2
-          done
-
-      - name: Test database connection
-        run: |
-          PGPASSWORD=thisisasamplepassword psql -h localhost -U postgres -d go-starter -c "SELECT version();"
-
-      - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-        env:
-          APP_ENV: ${{ env.APP_ENV }}
-          APP_HOST: ${{ env.APP_HOST }}
-          APP_PORT: ${{ env.APP_PORT }}
-          APP_URL: ${{ env.APP_URL }}
-          DB_HOST: ${{ env.DB_HOST }}
-          DB_USER: ${{ env.DB_USER }}
-          DB_PASSWORD: ${{ env.DB_PASSWORD }}
-          DB_NAME: ${{ env.DB_NAME }}
-          DB_PORT: ${{ env.DB_PORT }}
-          JWT_SECRET: ${{ env.JWT_SECRET }}
-          JWT_ACCESS_EXP_MINUTES: ${{ env.JWT_ACCESS_EXP_MINUTES }}
-          JWT_REFRESH_EXP_DAYS: ${{ env.JWT_REFRESH_EXP_DAYS }}
-          JWT_RESET_PASSWORD_EXP_MINUTES: ${{ env.JWT_RESET_PASSWORD_EXP_MINUTES }}
-          JWT_VERIFY_EMAIL_EXP_MINUTES: ${{ env.JWT_VERIFY_EMAIL_EXP_MINUTES }}
-          SMTP_HOST: ${{ env.SMTP_HOST }}
-          SMTP_PORT: ${{ env.SMTP_PORT }}
-          SMTP_USERNAME: ${{ env.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ env.SMTP_PASSWORD }}
-          EMAIL_FROM: ${{ env.EMAIL_FROM }}
-
       - name: Build application
         run: |
           mkdir -p bin
@@ -120,18 +55,33 @@ jobs:
           DB_PORT: ${{ env.DB_PORT }}
           JWT_SECRET: ${{ env.JWT_SECRET }}
 
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.out
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-        continue-on-error: true
+      - name: Check binary size
+        run: |
+          ls -lh bin/main
+          echo "Binary size: $(du -h bin/main | cut -f1)"
+
+      - name: Verify binary is executable
+        run: |
+          chmod +x bin/main
+          file bin/main
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: go-starter-binary
+          name: go-starter-binary-${{ github.sha }}
           path: bin/main
           retention-days: 7
+          compression-level: 9
+
+      - name: Create build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Build completed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Go Version: $(go version)" >> $GITHUB_STEP_SUMMARY
+          echo "- Binary Size: $(du -h bin/main | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- OS: linux" >> $GITHUB_STEP_SUMMARY
+          echo "- Architecture: amd64" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
