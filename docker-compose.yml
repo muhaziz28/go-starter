@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   # Main Application
-  dinsos-api:
+  go-starter:
     build:
       context: .
       dockerfile: Dockerfile
-    image: dinsos-api:latest
-    container_name: dinsos-api-prod
+    image: go-starter:latest
+    container_name: go-starter-prod
     restart: unless-stopped
 
     # Security: Non-root user, read-only filesystem
@@ -55,7 +55,7 @@ services:
 
     # Networks
     networks:
-      - dinsos-network
+      - go-starter-network
 
     # Logging configuration
     logging:
@@ -67,7 +67,7 @@ services:
   # MySQL Database
   mysqldb:
     image: mysql:8.0
-    container_name: dinsos-mysql-prod
+    container_name: go-starter-mysql-prod
     restart: unless-stopped
 
     # Security: Custom user
@@ -132,7 +132,7 @@ services:
 
     # Networks
     networks:
-      - dinsos-network
+      - go-starter-network
 
     # Logging
     logging:
@@ -144,7 +144,7 @@ services:
   # Nginx Reverse Proxy (Production)
   nginx:
     image: nginx:alpine
-    container_name: dinsos-nginx-prod
+    container_name: go-starter-nginx-prod
     restart: unless-stopped
 
     # Port mapping
@@ -160,11 +160,11 @@ services:
 
     # Dependencies
     depends_on:
-      - dinsos-api
+      - go-starter
 
     # Networks
     networks:
-      - dinsos-network
+      - go-starter-network
 
     # Resource limits
     deploy:
@@ -180,7 +180,7 @@ services:
   #   ports:
   #     - "127.0.0.1:8080:8080"  # Only localhost
   #   networks:
-  #     - dinsos-network
+  #     - go-starter-network
 
 # Volumes
 volumes:
@@ -189,7 +189,7 @@ volumes:
 
 # Networks
 networks:
-  dinsos-network:
+  go-starter-network:
     driver: bridge
     ipam:
       driver: default

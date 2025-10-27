@@ -6,36 +6,50 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 func Connect(dbHost, dbName string) *gorm.DB {
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		config.DBUser, config.DBPassword, dbHost, config.DBPort, dbName,
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Jakarta",
+		dbHost,
+		config.DBUser,
+		config.DBPassword,
+		dbName,
+		config.DBPort,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+	utils.Log.Infof("Connecting to database: %s@%s:%d/%s", config.DBUser, dbHost, config.DBPort, dbName)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger:                 logger.Default.LogMode(logger.Info),
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
 		TranslateError:         true,
 	})
 	if err != nil {
-		utils.Log.Errorf("Failed to connect to database: %+v", err)
+		utils.Log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error; err != nil {
+		utils.Log.Warnf("Failed to create uuid-ossp extension: %v", err)
 	}
 
 	sqlDB, errDB := db.DB()
 	if errDB != nil {
-		utils.Log.Errorf("Failed to connect to database: %+v", errDB)
+		utils.Log.Fatalf("Failed to get database instance: %v", errDB)
 	}
 
-	// Config connection pooling
+	if err := sqlDB.Ping(); err != nil {
+		utils.Log.Fatalf("Failed to ping database: %v", err)
+	}
+
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(60 * time.Minute)
 
+	utils.Log.Info("✅ Database connected successfully")
 	return db
 }

@@ -68,7 +68,7 @@ EXPOSE 3000
 # Add metadata labels
 LABEL maintainer="Your Name <your.email@example.com>"
 LABEL version="1.0"
-LABEL description="Dinsos API - Production Ready"
+LABEL description="go-starter API - Production Ready"
 
 # Health check
 HEALTHCHECK --interval=30s \
